@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">AutomaticText</string>
+    <string name="permissions_granted">Permissions Granted</string>
+    <string name="permissions_not_granted">Permissions Not Granted</string>
+</resources>

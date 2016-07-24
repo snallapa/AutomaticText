@@ -34,4 +34,11 @@
         android:hint="@string/number"
         android:layout_below="@id/app_enabled" />
 
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/remark"
+        android:layout_marginBottom="8dp"
+        android:layout_alignParentBottom="true"/>
+
 </RelativeLayout>

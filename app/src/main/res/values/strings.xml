@@ -2,4 +2,6 @@
     <string name="app_name">AutomaticText</string>
     <string name="permissions_granted">Permissions Granted</string>
     <string name="permissions_not_granted">Permissions Not Granted</string>
+    <string name="enabled">Enabled</string>
+    <string name="number">Number to intercept</string>
 </resources>

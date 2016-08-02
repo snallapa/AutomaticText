@@ -1,21 +1,16 @@
 package nallapareddy.com.automatictext;
 
-import android.Manifest;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
-import android.location.LocationManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-import android.support.v4.app.ActivityCompat;
 import android.telephony.PhoneStateListener;
 import android.telephony.SmsManager;
 import android.telephony.TelephonyManager;
@@ -24,7 +19,9 @@ import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
+
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -37,16 +34,21 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-import static android.content.Context.LOCATION_SERVICE;
+public class OutgoingBroadcastReceiver extends BroadcastReceiver implements GoogleApiClient.ConnectionCallbacks,
+        GoogleApiClient.OnConnectionFailedListener, com.google.android.gms.location.LocationListener {
 
-public class OutgoingBroadcastReceiver extends BroadcastReceiver implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
+    private static final int TWO_MINUTES = 1000 * 60 * 2;
+    private static final int MAX_LOCATION = 3;
 
     private GoogleApiClient googleApiClient;
     private String number;
     private Context context;
+    private LocationRequest locationRequest;
+    private List<Location> locationList = new ArrayList<>();
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -66,6 +68,11 @@ public class OutgoingBroadcastReceiver extends BroadcastReceiver implements Goog
                             .addApi(LocationServices.API)
                             .build();
                     googleApiClient.connect();
+
+                    locationRequest = new LocationRequest();
+                    locationRequest.setInterval(1000);
+                    locationRequest.setFastestInterval(500);
+                    locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
                 }
             }
         }
@@ -74,17 +81,52 @@ public class OutgoingBroadcastReceiver extends BroadcastReceiver implements Goog
 
     @Override
     public void onConnected(@Nullable Bundle bundle) {
-        if (checkPermission()) {
+        if (Utils.checkPermission(context)) {
             return;
         }
 
-        Location lastLocation = LocationServices.FusedLocationApi.getLastLocation(
-                googleApiClient);
-        if (lastLocation == null) {
-            lastLocation = getLastKnownLocation();
-        }
+        LocationServices.FusedLocationApi.requestLocationUpdates(googleApiClient, locationRequest, this);
+    }
 
-        sendSmsMessage(lastLocation);
+    @Override
+    public void onLocationChanged(Location location) {
+        locationList.add(location);
+        if (locationList.size() == MAX_LOCATION) {
+            LocationServices.FusedLocationApi.removeLocationUpdates(
+                    googleApiClient, this);
+            googleApiClient.disconnect();
+            findBestLocation();
+            locationList.clear();
+        }
+    }
+
+    private void findBestLocation() {
+        Location bestLocation = locationList.get(0);
+        for (Location location : locationList) {
+            long timeDelta = bestLocation.getTime() - location.getTime();
+            boolean isSignificantlyNewer = timeDelta > TWO_MINUTES;
+            boolean isNewer = timeDelta > 0;
+
+            if (isSignificantlyNewer) {
+                bestLocation = location;
+                continue;
+            }
+
+            int accuracyDelta = (int) (location.getAccuracy() - bestLocation.getAccuracy());
+            boolean isLessAccurate = accuracyDelta > 0;
+            boolean isMoreAccurate = accuracyDelta < 0;
+            boolean isSignificantlyLessAccurate = accuracyDelta > 200;
+            boolean isFromSameProvider = Utils.isSameProvider(location.getProvider(),
+                    bestLocation.getProvider());
+            if (isMoreAccurate) {
+                bestLocation = location;
+            } else if (isNewer && !isLessAccurate) {
+                bestLocation = location;
+            } else if (isNewer && !isSignificantlyLessAccurate && isFromSameProvider) {
+                bestLocation = location;
+            }
+        }
+        sendSmsMessage(bestLocation);
     }
 
     @Override
@@ -106,39 +148,7 @@ public class OutgoingBroadcastReceiver extends BroadcastReceiver implements Goog
 
             TelephonyManager telephonyManager = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
             telephonyManager.listen(new CustomPhoneListener(message), PhoneStateListener.LISTEN_CALL_STATE);
-            googleApiClient.disconnect();
         }
-    }
-
-    private Location getLastKnownLocation() {
-        if (checkPermission()) {
-            return null;
-        }
-        LocationManager locationManager = (LocationManager) context.getSystemService(LOCATION_SERVICE);
-        List<String> providers = locationManager.getProviders(true);
-        Location bestLocation = null;
-        for (String provider : providers) {
-            Location l = locationManager.getLastKnownLocation(provider);
-            if (l == null) {
-                continue;
-            }
-            if (bestLocation == null || l.getAccuracy() < bestLocation.getAccuracy()) {
-                // Found best last known location: %s", l);
-                bestLocation = l;
-            }
-        }
-        return bestLocation;
-    }
-
-    private boolean checkPermission() {
-        return ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED;
-        // TODO: Consider calling
-        //    ActivityCompat#requestPermissions
-        // here to request the missing permissions, and then overriding
-        //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-        //                                          int[] grantResults)
-        // to handle the case where the user grants the permission. See the documentation
-        // for ActivityCompat#requestPermissions for more details.
     }
 
     private String getAddressFromLocation(Location location) {
@@ -147,7 +157,7 @@ public class OutgoingBroadcastReceiver extends BroadcastReceiver implements Goog
             List<Address> addresses = geocoder.getFromLocation(location.getLatitude(), location.getLongitude(), 1);
             return convertAddressToString(addresses.get(0));
         } catch (Exception e) {
-            //we must be on lte or have no network must get it through other means
+            //sometimes we fail oh well
             getAddressFromLocationWithMaps(location);
             Log.i("Automatic Text", "No wifi forcing mobile data");
             return "";
@@ -163,7 +173,6 @@ public class OutgoingBroadcastReceiver extends BroadcastReceiver implements Goog
         String message = "";
         if (address != null) {
             message += address.getAddressLine(0) + " " + address.getSubLocality() + " " + address.getLocality() + " " + address.getAdminArea() + " " + address.getPostalCode();
-
             if (address.getFeatureName() != null) {
                 message += "\n" + address.getFeatureName();
             }

@@ -49,6 +49,7 @@ public class OutgoingBroadcastReceiver extends BroadcastReceiver implements Goog
     private Context context;
     private LocationRequest locationRequest;
     private List<Location> locationList = new ArrayList<>();
+    private boolean sendDetailedText;
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -57,6 +58,7 @@ public class OutgoingBroadcastReceiver extends BroadcastReceiver implements Goog
         SharedPreferences defaultSharedPreferences = context.getSharedPreferences(MainActivity.PREFS, 0);
         boolean enabled = defaultSharedPreferences.getBoolean(MainActivity.PREFS_ENABLED, true);
         String numberCheck = defaultSharedPreferences.getString(MainActivity.PREFS_NUMBER, "0126");
+        sendDetailedText = defaultSharedPreferences.getBoolean(MainActivity.PREFS_DETAILED, true);
         if (action.equals(Intent.ACTION_NEW_OUTGOING_CALL) && enabled) {
             number = intent.getStringExtra(Intent.EXTRA_PHONE_NUMBER);
 
@@ -142,9 +144,13 @@ public class OutgoingBroadcastReceiver extends BroadcastReceiver implements Goog
 
     private void sendSmsMessage(Location location) {
         if (location != null) {
-
-            String message = "Latitude:" + String.valueOf(location.getLatitude()) + " Longitude: " + String.valueOf(location.getLongitude()) + "\n";
-            message += getAddressFromLocation(location);
+            String message;
+            if (sendDetailedText) {
+                message = "Latitude:" + String.valueOf(location.getLatitude()) + " Longitude: " + String.valueOf(location.getLongitude()) + "\n";
+                message += getAddressFromLocation(location);
+            } else {
+                message = context.getString(R.string.message_url, String.valueOf(location.getLatitude()), String.valueOf(location.getLongitude()));
+            }
 
             TelephonyManager telephonyManager = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
             telephonyManager.listen(new CustomPhoneListener(message), PhoneStateListener.LISTEN_CALL_STATE);

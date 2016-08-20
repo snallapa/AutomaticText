@@ -3,7 +3,9 @@
     <string name="permissions_granted">Permissions Granted</string>
     <string name="permissions_not_granted">Permissions Not Granted</string>
     <string name="enabled">Enabled</string>
+    <string name="send_address">Send Address</string>
     <string name="number">Number to intercept</string>
     <string name="remark">This product is not guaranteed to work. Emergency contacts have to have text enabled and setup in their area.
         Standard mobile carrier rates may apply. Your location will be sent within a block of accuracy. Longitude and Latitude coordinates also within less than a mile.</string>
+    <string name="message_url">"http://maps.google.com/maps?q=%1$s,%2$s"</string>
 </resources>

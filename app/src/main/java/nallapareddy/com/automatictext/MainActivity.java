@@ -26,6 +26,7 @@ public class MainActivity extends AppCompatActivity {
     public static final String PREFS = "prefs_automatictext";
     public static final String PREFS_ENABLED = "prefs_enabled";
     public static final String PREFS_NUMBER = "prefs_number";
+    public static final String PREFS_DETAILED = "prefs_detailed";
 
     @BindView(R.id.permissions_text)
     TextView permissionsText;
@@ -33,9 +34,11 @@ public class MainActivity extends AppCompatActivity {
     Switch enabled;
     @BindView(R.id.number_input)
     EditText numberText;
+    @BindView(R.id.detailed_text)
+    Switch detailedText;
 
     private boolean appEnabled;
-    private String number;
+    private boolean sendDetailedText;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,9 +49,11 @@ public class MainActivity extends AppCompatActivity {
 
         SharedPreferences preferences = getSharedPreferences(PREFS, 0);
         appEnabled = preferences.getBoolean(PREFS_ENABLED, true);
-        number = preferences.getString(PREFS_NUMBER, "0126");
+        sendDetailedText = preferences.getBoolean(PREFS_DETAILED, true);
+        String number = preferences.getString(PREFS_NUMBER, "0126");
         numberText.setText(number.trim());
         enabled.setChecked(appEnabled);
+        detailedText.setChecked(sendDetailedText);
     }
 
     @Override
@@ -60,6 +65,7 @@ public class MainActivity extends AppCompatActivity {
             editor.putString(PREFS_NUMBER, numberText.getText().toString().trim());
         }
         editor.putBoolean(PREFS_ENABLED, appEnabled);
+        editor.putBoolean(PREFS_DETAILED, sendDetailedText);
         editor.commit();
     }
 
@@ -101,6 +107,11 @@ public class MainActivity extends AppCompatActivity {
     @OnCheckedChanged(R.id.app_enabled)
     public void enabledChanged() {
         appEnabled = enabled.isChecked();
+    }
+
+    @OnCheckedChanged(R.id.detailed_text)
+    public void detailedTextChanged() {
+        sendDetailedText = detailedText.isChecked();
     }
 
 }

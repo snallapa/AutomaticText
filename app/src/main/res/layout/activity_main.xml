@@ -17,22 +17,32 @@
         android:layout_alignParentTop="true"
         android:layout_marginBottom="5dp"
         />
-    <Switch
 
+    <Switch
         android:id="@+id/app_enabled"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_below="@id/permissions_text"
         android:text="@string/enabled"
-        android:layout_marginBottom="5dp"
+        android:layout_marginBottom="8dp"
         />
+
+    <Switch
+        android:id="@+id/detailed_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/app_enabled"
+        android:text="@string/send_address"
+        android:layout_marginBottom="8dp"
+        />
+
     <EditText
         android:id="@+id/number_input"
         android:inputType="phone"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:hint="@string/number"
-        android:layout_below="@id/app_enabled" />
+        android:layout_below="@id/detailed_text" />
 
     <TextView
         android:layout_width="match_parent"
